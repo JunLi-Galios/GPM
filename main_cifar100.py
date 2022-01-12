@@ -37,8 +37,10 @@ class AlexNet(nn.Module):
         self.map.append(32)
         if conv_module == 'standard':
             self.conv1 = nn.Conv2d(3, 64, 4, bias=False)
+            self.conv11 = nn.Identity()
         else:
-            self.conv1 = skew_conv(3, 64, 4, bias=False)
+            self.conv1 = skew_conv(3, 64, 3, bias=False)
+            self.conv11 = nn.Conv2d(64, 64, 4, bias=False)
         self.bn1 = nn.BatchNorm2d(64, track_running_stats=False)
         s=compute_conv_output_size(32,4)
         s=s//2
@@ -47,8 +49,10 @@ class AlexNet(nn.Module):
         self.map.append(s)
         if conv_module == 'standard':
             self.conv2 = nn.Conv2d(64, 128, 3, bias=False)
+            self.conv21 = nn.Identity()
         else:
             self.conv2 = skew_conv(64, 128, 3, bias=False)
+            self.conv21 = nn.Conv2d(128, 128, 3, bias=False)
         self.bn2 = nn.BatchNorm2d(128, track_running_stats=False)
         s=compute_conv_output_size(s,3)
         s=s//2
@@ -57,8 +61,10 @@ class AlexNet(nn.Module):
         self.map.append(s)
         if conv_module == 'standard':
             self.conv3 = nn.Conv2d(128, 256, 2, bias=False)
+            self.conv31 = nn.Identity()
         else:
-            self.conv3 = skew_conv(128, 256, 2, bias=False)
+            self.conv3 = skew_conv(128, 256, 3, bias=False)
+            self.conv31 = nn.Conv2d(256, 256, 2, bias=False)
         self.bn3 = nn.BatchNorm2d(256, track_running_stats=False)
         s=compute_conv_output_size(s,2)
         s=s//2
@@ -84,16 +90,19 @@ class AlexNet(nn.Module):
         
     def forward(self, x):
         bsz = deepcopy(x.size(0))
-        self.act['conv1']=x
         x = self.conv1(x)
+        self.act['conv1']=x
+        x = self.conv11(x)
         x = self.maxpool(self.drop1(self.relu(self.bn1(x))))
 
-        self.act['conv2']=x
         x = self.conv2(x)
+        self.act['conv2']=x
+        x = self.conv21(x)
         x = self.maxpool(self.drop1(self.relu(self.bn2(x))))
 
-        self.act['conv3']=x
         x = self.conv3(x)
+        self.act['conv3']=x
+        x = self.conv31(x)
         x = self.maxpool(self.drop2(self.relu(self.bn3(x))))
 
         x=x.view(bsz,-1)
