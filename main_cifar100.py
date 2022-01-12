@@ -71,6 +71,7 @@ class AlexNet(nn.Module):
         self.smid=s
         self.ksize.append(2)
         self.in_channel.append(128)
+        self.in_channel.append(256)
         self.map.append(256*self.smid*self.smid)
         self.maxpool=torch.nn.MaxPool2d(2)
         self.relu=torch.nn.ReLU()
@@ -224,7 +225,10 @@ def get_representation_matrix (net, device, x, y=None):
         if i<3:
             ksz= net.ksize[i]
             s=compute_conv_output_size(net.map[i],net.ksize[i])
-            mat = np.zeros((net.ksize[i]*net.ksize[i]*net.in_channel[i],s*s*bsz))
+            if args.conv_module=='standard':
+                mat = np.zeros((net.ksize[i]*net.ksize[i]*net.in_channel[i],s*s*bsz))
+            else:
+                mat = np.zeros((net.ksize[i]*net.ksize[i]*net.in_channel[i+1],s*s*bsz))
             act = net.act[act_key[i]].detach().cpu().numpy()
             for kk in range(bsz):
                 for ii in range(s):
