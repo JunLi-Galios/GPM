@@ -41,7 +41,7 @@ class AlexNet(nn.Module):
         self.bn1 = nn.BatchNorm2d(64, track_running_stats=False)
         s=compute_conv_output_size(32,4)
         s=s//2
-        self.ksize.append(4)
+        self.ksize.append(3)
         self.in_channel.append(3)
         self.map.append(s)
         self.conv2 = conv_module(64, 128, 3, bias=False)
@@ -55,8 +55,11 @@ class AlexNet(nn.Module):
         self.bn3 = nn.BatchNorm2d(256, track_running_stats=False)
         s=compute_conv_output_size(s,2)
         s=s//2
-        self.smid=s
-        self.ksize.append(2)
+        if conv_module==nn.Conv2d:
+            self.smid=s
+        elif conv_module==skew_conv:
+            self.smid=2*s
+        self.ksize.append(3)
         self.in_channel.append(128)
         self.map.append(256*self.smid*self.smid)
         self.maxpool=torch.nn.MaxPool2d(2)
