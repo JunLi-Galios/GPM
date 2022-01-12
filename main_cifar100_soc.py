@@ -36,6 +36,7 @@ class AlexNet(nn.Module):
         self.map =[]
         self.ksize=[]
         self.in_channel =[]
+        self.out_channel = []
         self.map.append(32)
         self.conv1 = conv_module(3, 64, 3, bias=False)
         self.bn1 = nn.BatchNorm2d(64, track_running_stats=False)
@@ -43,6 +44,7 @@ class AlexNet(nn.Module):
         s=s//2
         self.ksize.append(3)
         self.in_channel.append(3)
+        self.out_channel.append(64)
         self.map.append(s)
         self.conv2 = conv_module(64, 128, 3, bias=False)
         self.bn2 = nn.BatchNorm2d(128, track_running_stats=False)
@@ -50,6 +52,7 @@ class AlexNet(nn.Module):
         s=s//2
         self.ksize.append(3)
         self.in_channel.append(64)
+        self.out_channel.append(128)
         self.map.append(s)
         self.conv3 = conv_module(128, 256, 3, bias=False)
         self.bn3 = nn.BatchNorm2d(256, track_running_stats=False)
@@ -61,6 +64,7 @@ class AlexNet(nn.Module):
             self.smid=2*s
         self.ksize.append(3)
         self.in_channel.append(128)
+        self.out_channel.append(256)
         self.map.append(256*self.smid*self.smid)
         self.maxpool=torch.nn.MaxPool2d(2)
         self.relu=torch.nn.ReLU()
@@ -80,16 +84,18 @@ class AlexNet(nn.Module):
         
     def forward(self, x):
         bsz = deepcopy(x.size(0))
-        self.act['conv1']=x
         x = self.conv1(x)
+        self.act['conv1']=x
         x = self.maxpool(self.drop1(self.relu(self.bn1(x))))
 
-        self.act['conv2']=x
+        
         x = self.conv2(x)
+        self.act['conv2']=x
         x = self.maxpool(self.drop1(self.relu(self.bn2(x))))
 
-        self.act['conv3']=x
+        
         x = self.conv3(x)
+        self.act['conv3']=x
         x = self.maxpool(self.drop2(self.relu(self.bn3(x))))
 
         x=x.view(bsz,-1)
@@ -155,11 +161,15 @@ def train_projected(args,model,device,x,y,optimizer,criterion,feature_mat,task_i
         # Gradient Projections 
         kk = 0 
         for k, (m,params) in enumerate(model.named_parameters()):
+            if params.grad is None:
+                continue
             if k<15 and len(params.size())!=1:
+                
                 sz =  params.grad.data.size(0)
-                params.grad.data = params.grad.data - torch.mm(params.grad.data.view(sz,-1),\
+                if m.find('random_conv_filter') >= 0: 
+                    params.grad.data = params.grad.data - torch.mm(params.grad.data.view(sz,-1),\
                                                         feature_mat[kk]).view(params.size())
-                kk +=1
+                    kk +=1
             elif (k<15 and len(params.size())==1) and task_id !=0 :
                 params.grad.data.fill_(0)
 
@@ -211,7 +221,10 @@ def get_representation_matrix (net, device, x, y=None):
         if i<3:
             ksz= net.ksize[i]
             s=compute_conv_output_size(net.map[i],net.ksize[i])
-            mat = np.zeros((net.ksize[i]*net.ksize[i]*net.in_channel[i],s*s*bsz))
+            if args.conv_type == 'standard':
+                mat = np.zeros((net.ksize[i]*net.ksize[i]*net.in_channel[i],s*s*bsz))
+            elif args.conv_type == 'soc':
+                mat = np.zeros((net.ksize[i]*net.ksize[i]*max(net.in_channel[i], net.out_channel[i]),s*s*bsz))
             act = net.act[act_key[i]].detach().cpu().numpy()
             for kk in range(bsz):
                 for ii in range(s):
