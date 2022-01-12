@@ -21,33 +21,44 @@ import argparse,time
 import math
 from copy import deepcopy
 
+from skew_symmetric_conv import skew_conv
+
 ## Define AlexNet model
 def compute_conv_output_size(Lin,kernel_size,stride=1,padding=0,dilation=1):
     return int(np.floor((Lin+2*padding-dilation*(kernel_size-1)-1)/float(stride)+1))
 
 class AlexNet(nn.Module):
-    def __init__(self,taskcla):
+    def __init__(self,taskcla,conv_module):
         super(AlexNet, self).__init__()
         self.act=OrderedDict()
         self.map =[]
         self.ksize=[]
         self.in_channel =[]
         self.map.append(32)
-        self.conv1 = nn.Conv2d(3, 64, 4, bias=False)
+        if conv_module == 'standard':
+            self.conv1 = nn.Conv2d(3, 64, 4, bias=False)
+        else:
+            self.conv1 = skew_conv(3, 64, 4, bias=False)
         self.bn1 = nn.BatchNorm2d(64, track_running_stats=False)
         s=compute_conv_output_size(32,4)
         s=s//2
         self.ksize.append(4)
         self.in_channel.append(3)
         self.map.append(s)
-        self.conv2 = nn.Conv2d(64, 128, 3, bias=False)
+        if conv_module == 'standard':
+            self.conv2 = nn.Conv2d(64, 128, 3, bias=False)
+        else:
+            self.conv2 = skew_conv(64, 128, 3, bias=False)
         self.bn2 = nn.BatchNorm2d(128, track_running_stats=False)
         s=compute_conv_output_size(s,3)
         s=s//2
         self.ksize.append(3)
         self.in_channel.append(64)
         self.map.append(s)
-        self.conv3 = nn.Conv2d(128, 256, 2, bias=False)
+        if conv_module == 'standard':
+            self.conv3 = nn.Conv2d(128, 256, 2, bias=False)
+        else:
+            self.conv3 = skew_conv(128, 256, 2, bias=False)
         self.bn3 = nn.BatchNorm2d(256, track_running_stats=False)
         s=compute_conv_output_size(s,2)
         s=s//2
@@ -314,7 +325,7 @@ def main(args):
         print ('-'*40)
         
         if task_id==0:
-            model = AlexNet(taskcla).to(device)
+            model = AlexNet(taskcla, args.conv_module).to(device)
             print ('Model parameters ---')
             for k_t, (m, param) in enumerate(model.named_parameters()):
                 print (k_t,m,param.shape)
@@ -462,6 +473,9 @@ if __name__ == "__main__":
                         help='hold before decaying lr (default: 6)')
     parser.add_argument('--lr_factor', type=int, default=2, metavar='LRF',
                         help='lr decay factor (default: 2)')
+    # Model parameters
+    parser.add_argument('--conv_module', type=str, default='standard', metavar='CONV',
+                        help='conv module type (default: standard)')
 
 
     args = parser.parse_args()
