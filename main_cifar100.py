@@ -94,16 +94,19 @@ class AlexNet(nn.Module):
         x = self.conv1(x)
         self.act['conv1']=x
         x = self.conv11(x)
+        self.act['conv11']=x
         x = self.maxpool(self.drop1(self.relu(self.bn1(x))))
 
         x = self.conv2(x)
         self.act['conv2']=x
         x = self.conv21(x)
+        self.act['conv21']=x
         x = self.maxpool(self.drop1(self.relu(self.bn2(x))))
 
         x = self.conv3(x)
         self.act['conv3']=x
         x = self.conv31(x)
+        self.act['conv31']=x
         x = self.maxpool(self.drop2(self.relu(self.bn3(x))))
 
         x=x.view(bsz,-1)
